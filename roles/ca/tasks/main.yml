@@ -1,0 +1,50 @@
+- name: "创建CA证书目录"
+  file:
+    path: "{{ ssl_dir }}"
+    state: directory
+
+- stat:
+    path: "{{ ssl_dir }}/ca.key"
+  register: ca_key
+- name: "创建 CA 私钥"
+  when: not ca_key.stat.exists
+  openssl_privatekey:
+    path: "{{ ssl_dir }}/ca.key"
+    type: RSA
+    size: 4096
+
+- stat:
+    path: "{{ ssl_dir }}/ca.csr"
+  register: ca_csr
+- name: "创建 CA 证书请求文件"
+  when: not ca_csr.stat.exists
+  openssl_csr:
+    path: "{{ ssl_dir }}/ca.csr"
+    privatekey_path: "{{ ssl_dir }}/ca.key"
+    use_common_name_for_san: no
+    country_name: CN
+    state_or_province_name: Shanghai
+    locality_name: Shanghai
+    organization_name: opm
+    common_name: ca
+    basic_constraints_critical: yes
+    basic_constraints:
+      - CA:TRUE
+    key_usage_critical: yes
+    key_usage:
+      - cRLSign
+      - digitalSignature
+      - keyCertSign
+      - keyEncipherment
+
+- stat:
+    path: "{{ ssl_dir }}/ca.crt"
+  register: ca_crt
+- name: "创建 CA 证书，自签根证书"
+  when: not ca_crt.stat.exists
+  openssl_certificate:
+    path: "{{ ssl_dir }}/ca.crt"
+    provider: selfsigned
+    privatekey_path: "{{ ssl_dir }}/ca.key"
+    csr_path: "{{ ssl_dir }}/ca.csr"
+

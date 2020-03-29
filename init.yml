@@ -1,0 +1,5 @@
+---
+- name: "系统初始化"
+  hosts: all
+  roles:
+    - { role: 'init', tags: "init" }

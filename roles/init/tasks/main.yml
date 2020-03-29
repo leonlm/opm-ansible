@@ -1,0 +1,97 @@
+- name: "修改主机名"
+  hostname:
+    name: "{{ hostname|quote }}"
+  tags: hostname
+
+- name: "设置命令行提示符, history等"
+  copy:
+    src: "setup.sh"
+    dest: "/etc/profile.d/"
+  tags: profile
+
+- name: "设置时区"
+  timezone:
+    name: Asia/Shanghai
+
+- name: "查找所有的YUM源"
+  find:
+    paths: /etc/yum.repos.d
+    patterns: "*.repo"
+  register: repo_files
+
+- name: "删除默认YUM源"
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ repo_files.files }}"
+  tags: delete_yum_repos
+
+- name: "添加阿里云的CentOS-Base YUM源"
+  yum_repository:
+    file: CentOS-Base-aliyun
+    name: '{{ item.name }}'
+    description: '{{ item.description}}'
+    baseurl: '{{ item.baseurl }}'
+    gpgkey: "https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-7"
+    failovermethod: priority
+    gpgcheck: yes
+    enabled: yes
+  with_items:
+    - { name: "base",description: "CentOS-$releasever - Base - mirrors.aliyun.com",baseurl: "https://mirrors.aliyun.com/centos/$releasever/os/$basearch/" }
+    - { name: "updates",description: "CentOS-$releasever - Updates - mirrors.aliyun.com",baseurl: "https://mirrors.aliyun.com/centos/$releasever/updates/$basearch/" }
+    - { name: "extras",description: "CentOS-$releasever - Extras - mirrors.aliyun.com",baseurl: "https://mirrors.aliyun.com/centos/$releasever/extras/$basearch/" }
+  tags: CentOS-Base-aliyun
+
+- name: "添加阿里云的EPEL YUM源"
+  yum_repository:
+    file: epel-aliyun
+    name: epel
+    description: Extra Packages for Enterprise Linux 7 - $basearch
+    baseurl: "https://mirrors.aliyun.com/epel/7/$basearch"
+    gpgkey: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7"
+    failovermethod: priority
+    gpgcheck: no
+    enabled: yes
+  tags: epel-aliyun
+
+- name: "关闭selinux"
+  selinux:
+    state: disabled
+  tags: disabled_selinux
+
+- name: "关闭防火墙"
+  systemd:
+    name: firewalld
+    enabled: no
+    state: stopped
+  tags: stop_firewalld
+
+- name: "安装必要软件"
+  yum:
+    name: "{{ item.line }}"
+    state: latest
+  with_items:
+    - {line: 'nscd'}
+    - {line: 'net-tools'}
+    - {line: 'procps-ng'}
+    - {line: 'vim'}
+    - {line: 'curl'}
+    - {line: 'wget'}
+    - {line: 'lsof'}
+    - {line: 'mtr'}
+    - {line: 'rsync'}
+    - {line: 'telnet'}
+    - {line: 'yum-utils'}
+    - {line: 'nfs-utils'}
+    - {line: 'jq'}
+    - {line: 'which'}
+    - {line: 'file'}
+    - {line: 'tree'}
+  tags: install_app
+
+- name: "启用dns缓存"
+  systemd:
+    name: nscd
+    state: started
+  tags: start_nscd
+

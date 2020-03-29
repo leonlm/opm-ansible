@@ -1,0 +1,7 @@
+---
+- name: "自建CA"
+  hosts: localhost
+  vars:
+    ssl_dir: /etc/ssl/selfCA
+  roles:
+    - { role: 'ca', tags: "ca" }
